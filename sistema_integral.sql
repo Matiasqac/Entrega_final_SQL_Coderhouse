@@ -1,64 +1,67 @@
--- Creación de la base de datos
-CREATE DATABASE IF NOT EXISTS sistema_integral;
-USE sistema_integral;
+-- Crear la base de datos (si no existe)
+CREATE DATABASE IF NOT EXISTS sistema_comercial;
+
+-- Usar la base de datos
+USE sistema_comercial;
 
 -- Tabla Clientes
-CREATE TABLE IF NOT EXISTS Clientes (
-    id_cliente INT PRIMARY KEY AUTO_INCREMENT,
-    nombre_cliente VARCHAR(50),
-    genero ENUM('masculino', 'femenino', 'otro'),
-    ubicacion VARCHAR(50),
+CREATE TABLE Clientes (
+    id_cliente INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_cliente VARCHAR(30),
+    genero ENUM('Masculino', 'Femenino', 'Otro'),
+    ubicacion VARCHAR(30),
     fecha_nacimiento DATE,
     fecha_registro DATE,
     categoria VARCHAR(15)
 );
 
 -- Tabla Proveedores
-CREATE TABLE IF NOT EXISTS Proveedores (
-    id_proveedor INT PRIMARY KEY AUTO_INCREMENT,
-    nombre_proveedor VARCHAR(50),
-    direccion VARCHAR(50),
-    ciudad VARCHAR(50),
+CREATE TABLE Proveedores (
+    id_proveedor INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_proveedor VARCHAR(30),
+    direccion VARCHAR(30),
+    ciudad VARCHAR(30),
     metodo_pago VARCHAR(30)
 );
 
 -- Tabla Empleados
-CREATE TABLE IF NOT EXISTS Empleados (
-    id_empleado INT PRIMARY KEY AUTO_INCREMENT,
-    nombre_empleado VARCHAR(50),
-    ubicacion_empleado VARCHAR(50),
+CREATE TABLE Empleados (
+    id_empleado INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_empleado VARCHAR(30),
+    ubicacion_empleado VARCHAR(30),
     fecha_nacimiento_empleado DATE,
-    area_empleado ENUM('Administracion', 'Ventas', 'Tecnico')
+    area_empleado ENUM('Ventas', 'Compras', 'Administración', 'Otro')
 );
 
 -- Tabla Productos
-CREATE TABLE IF NOT EXISTS Productos (
-    id_producto INT PRIMARY KEY AUTO_INCREMENT,
-    nombre_producto VARCHAR(50),
+CREATE TABLE Productos (
+    id_producto INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_producto VARCHAR(30),
     precio_unitario DECIMAL(10, 2),
     stock INT
 );
 
 -- Tabla Servicios
-CREATE TABLE IF NOT EXISTS Servicios (
-    id_servicio INT PRIMARY KEY AUTO_INCREMENT,
-    descripcion VARCHAR(50),
+CREATE TABLE Servicios (
+    id_servicio INT AUTO_INCREMENT PRIMARY KEY,
+    descripcion VARCHAR(30),
+    precio_unitario_servicio DECIMAL(10, 2),
     tiempo_estimado INT
 );
 
--- Tabla Items (intermedia para agrupar productos y servicios)
-CREATE TABLE IF NOT EXISTS Items (
-    id_item INT PRIMARY KEY AUTO_INCREMENT,
-    tipo_item ENUM('Producto', 'Servicio') NOT NULL,
-    id_producto INT DEFAULT NULL,
-    id_servicio INT DEFAULT NULL,
-    FOREIGN KEY (id_producto) REFERENCES Productos(id_producto) ON DELETE SET NULL,
-    FOREIGN KEY (id_servicio) REFERENCES Servicios(id_servicio) ON DELETE SET NULL
+-- Tabla Items
+CREATE TABLE Items (
+    id_item INT AUTO_INCREMENT PRIMARY KEY,
+    tipo_item ENUM('Producto', 'Servicio'),
+    id_producto INT,
+    id_servicio INT,
+    FOREIGN KEY (id_producto) REFERENCES Productos(id_producto),
+    FOREIGN KEY (id_servicio) REFERENCES Servicios(id_servicio)
 );
 
 -- Tabla Ventas
-CREATE TABLE IF NOT EXISTS Ventas (
-    id_venta INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE Ventas (
+    id_venta INT AUTO_INCREMENT PRIMARY KEY,
     total DECIMAL(10, 2),
     fecha_venta DATE,
     id_cliente INT,
@@ -67,22 +70,21 @@ CREATE TABLE IF NOT EXISTS Ventas (
     FOREIGN KEY (id_empleado) REFERENCES Empleados(id_empleado)
 );
 
--- Tabla DetalleVentas
-CREATE TABLE IF NOT EXISTS DetalleVentas (
-    id_detalle_venta INT PRIMARY KEY AUTO_INCREMENT,
-    descuento DECIMAL(10, 2),
+-- Tabla Detalle Ventas
+CREATE TABLE Detalle_Ventas (
+    id_detalle_venta INT AUTO_INCREMENT PRIMARY KEY,
+    descuento DECIMAL(5, 2),
     total_linea_venta DECIMAL(10, 2),
+    cantidad INT,
     id_venta INT,
     id_item INT,
-    id_empleado INT,
     FOREIGN KEY (id_venta) REFERENCES Ventas(id_venta),
-    FOREIGN KEY (id_item) REFERENCES Items(id_item),
-    FOREIGN KEY (id_empleado) REFERENCES Empleados(id_empleado)
+    FOREIGN KEY (id_item) REFERENCES Items(id_item)
 );
 
 -- Tabla Compras
-CREATE TABLE IF NOT EXISTS Compras (
-    id_compra INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE Compras (
+    id_compra INT AUTO_INCREMENT PRIMARY KEY,
     total_compra DECIMAL(10, 2),
     id_proveedor INT,
     id_empleado INT,
@@ -90,11 +92,11 @@ CREATE TABLE IF NOT EXISTS Compras (
     FOREIGN KEY (id_empleado) REFERENCES Empleados(id_empleado)
 );
 
--- Tabla DetalleCompras
-CREATE TABLE IF NOT EXISTS DetalleCompras (
-    id_detalle_compra INT PRIMARY KEY AUTO_INCREMENT,
+-- Tabla Detalle Compras
+CREATE TABLE Detalle_Compras (
+    id_detalle_compra INT AUTO_INCREMENT PRIMARY KEY,
     cantidad INT,
-    descuento DECIMAL(10, 2),
+    descuento DECIMAL(5, 2),
     precio_unitario_compra DECIMAL(10, 2),
     total_linea_compra DECIMAL(10, 2),
     id_producto INT,
@@ -102,3 +104,4 @@ CREATE TABLE IF NOT EXISTS DetalleCompras (
     FOREIGN KEY (id_producto) REFERENCES Productos(id_producto),
     FOREIGN KEY (id_compra) REFERENCES Compras(id_compra)
 );
+
