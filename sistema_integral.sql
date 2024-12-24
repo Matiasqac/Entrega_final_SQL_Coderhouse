@@ -105,3 +105,5 @@ CREATE TABLE Detalle_Compras (
     FOREIGN KEY (id_compra) REFERENCES Compras(id_compra)
 );
 
+
+
