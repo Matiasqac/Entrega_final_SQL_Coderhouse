@@ -1,5 +1,3 @@
--- Creacion de objetos
-
 -- Crear la base de datos (si no existe)
 CREATE DATABASE IF NOT EXISTS sistema_comercial;
 
@@ -51,14 +49,18 @@ CREATE TABLE Servicios (
     tiempo_estimado INT
 );
 
--- Tabla Items
+-- Tabla Items 
 CREATE TABLE Items (
     id_item INT AUTO_INCREMENT PRIMARY KEY,
     tipo_item ENUM('Producto', 'Servicio'),
-    id_producto INT,
-    id_servicio INT,
+    id_producto INT NULL,
+    id_servicio INT NULL,
     FOREIGN KEY (id_producto) REFERENCES Productos(id_producto),
-    FOREIGN KEY (id_servicio) REFERENCES Servicios(id_servicio)
+    FOREIGN KEY (id_servicio) REFERENCES Servicios(id_servicio),
+    CHECK (
+        (id_producto IS NOT NULL AND id_servicio IS NULL) OR
+        (id_producto IS NULL AND id_servicio IS NOT NULL)
+    )
 );
 
 -- Tabla Ventas
@@ -84,10 +86,11 @@ CREATE TABLE Detalle_Ventas (
     FOREIGN KEY (id_item) REFERENCES Items(id_item)
 );
 
--- Tabla Compras
+-- Tabla Compras 
 CREATE TABLE Compras (
     id_compra INT AUTO_INCREMENT PRIMARY KEY,
     total_compra DECIMAL(10, 2),
+    fecha_compra DATE NOT NULL,
     id_proveedor INT,
     id_empleado INT,
     FOREIGN KEY (id_proveedor) REFERENCES Proveedores(id_proveedor),
@@ -105,6 +108,27 @@ CREATE TABLE Detalle_Compras (
     id_compra INT,
     FOREIGN KEY (id_producto) REFERENCES Productos(id_producto),
     FOREIGN KEY (id_compra) REFERENCES Compras(id_compra)
+);
+
+-- Tabla Historial de Precios
+CREATE TABLE Historial_Precios (
+    id_historial INT AUTO_INCREMENT PRIMARY KEY,
+    id_producto INT,
+    precio_anterior DECIMAL(10, 2),
+    precio_nuevo DECIMAL(10, 2),
+    fecha_cambio DATETIME,
+    FOREIGN KEY (id_producto) REFERENCES Productos(id_producto)
+);
+
+-- Tabla Historial de Stock
+CREATE TABLE Historial_Stock (
+    id_historial_stock INT AUTO_INCREMENT PRIMARY KEY,
+    id_producto INT,
+    cantidad_anterior INT,
+    cantidad_nueva INT,
+    tipo_cambio ENUM('Aumento', 'Disminución'),
+    fecha_cambio DATETIME,
+    FOREIGN KEY (id_producto) REFERENCES Productos(id_producto)
 );
 
 
@@ -255,7 +279,9 @@ CREATE PROCEDURE RegistrarCompraYActualizarStock(
     IN p_precio_unitario DECIMAL(10,2)
 )
 BEGIN
+    -- Declarar variables locales al inicio del bloque
     DECLARE v_total_compra DECIMAL(10,2);
+    DECLARE v_id_compra INT;
 
     -- Calcular el total de la compra
     SET v_total_compra = p_precio_unitario * p_cantidad;
@@ -265,12 +291,11 @@ BEGIN
     VALUES (v_total_compra, p_id_proveedor, p_id_empleado);
 
     -- Obtener el ID de la compra registrada
-    DECLARE v_id_compra INT;
     SET v_id_compra = LAST_INSERT_ID();
 
     -- Insertar el detalle de la compra
-    INSERT INTO Detalle_Compras (cantidad, precio_unitario_compra, total_linea_compra, id_producto, id_compra)
-    VALUES (p_cantidad, p_precio_unitario, v_total_compra, p_id_producto, v_id_compra);
+    INSERT INTO Detalle_Compras (cantidad, descuento, precio_unitario_compra, total_linea_compra, id_producto, id_compra)
+    VALUES (p_cantidad, 0, p_precio_unitario, v_total_compra, p_id_producto, v_id_compra);
 
     -- Actualizar el stock del producto
     UPDATE Productos
@@ -325,23 +350,10 @@ END$$
 
 DELIMITER ;
 
--- Creacion de Trigger para tener en una tabla do.en se vea la modificacion de precios 
 
 
--- 1)primero creamos la tabla
-
-CREATE TABLE Historial_Precios (
-    id_historial INT AUTO_INCREMENT PRIMARY KEY,
-    id_producto INT,
-    precio_anterior DECIMAL(10, 2),
-    precio_nuevo DECIMAL(10, 2),
-    fecha_cambio DATETIME,
-    FOREIGN KEY (id_producto) REFERENCES Productos(id_producto)
-);
-
--- ahora creamos el trigger
+-- Trigger Historial de Precio Producto
 DELIMITER //
-
 CREATE TRIGGER HistorialPrecioProducto
 AFTER UPDATE ON Productos
 FOR EACH ROW
@@ -351,39 +363,18 @@ BEGIN
         VALUES (NEW.id_producto, OLD.precio_unitario, NEW.precio_unitario, NOW());
     END IF;
 END //
-
 DELIMITER ;
 
--- Creacion de Trigger 2 Registro de modificaciones de stock
-
---1) creamos la tabla
-
-CREATE TABLE Historial_Stock (
-    id_historial_stock INT AUTO_INCREMENT PRIMARY KEY,
-    id_producto INT,
-    cantidad_anterior INT,
-    cantidad_nueva INT,
-    tipo_cambio ENUM('Aumento', 'Disminución'),
-    fecha_cambio DATETIME,
-    FOREIGN KEY (id_producto) REFERENCES Productos(id_producto)
-);
-
-
--- ahora creamos el trigger
-
+-- Trigger Historial de Stock Producto
 DELIMITER //
-
 CREATE TRIGGER HistorialStockProducto
 AFTER UPDATE ON Productos
 FOR EACH ROW
 BEGIN
     IF OLD.stock <> NEW.stock THEN
-        -- Insertamos el cambio de stock en el historial
         INSERT INTO Historial_Stock (id_producto, cantidad_anterior, cantidad_nueva, tipo_cambio, fecha_cambio)
-        VALUES (NEW.id_producto, OLD.stock, NEW.stock, 
-            IF(NEW.stock > OLD.stock, 'Aumento', 'Disminución'), NOW());
+        VALUES (NEW.id_producto, OLD.stock, NEW.stock, IF(NEW.stock > OLD.stock, 'Aumento', 'Disminución'), NOW());
     END IF;
 END //
-
 DELIMITER ;
 
